@@ -1,5 +1,4 @@
-// types/index.ts
-import { SortingState } from "@tanstack/react-table";
+import { SortingState } from '@tanstack/react-table';
 
 export interface TableData {
   [key: string]: any;
@@ -53,10 +52,29 @@ export interface TableConfig<T extends TableData> {
     theme?: 'light' | 'dark';
   };
   enableRawData?: boolean;
+  exportFileName?: string; // New: Optional export file name
 }
 
 export interface TableMeta<T extends TableData> {
   config: TableConfig<T>;
   isLoading: boolean;
   fetchTableData: () => Promise<void>;
+}
+
+export interface DataTableProps<T extends TableData> {
+  config: TableConfig<T>;
+  className?: string;
+  style?: React.CSSProperties;
+  onRowClick?: (row: T) => void;
+  renderToolbar?: (table: any) => React.ReactNode;
+  renderFilter?: (column: any) => React.ReactNode;
+  filterTypes?: Record<string, 'text' | 'select' | ((column: any) => React.ReactNode)>;
+  renderHeader?: (header: any) => React.ReactNode;
+  sortIcons?: { asc?: React.ReactNode; desc?: React.ReactNode; unsorted?: React.ReactNode };
+  renderCell?: (cell: any) => React.ReactNode;
+  renderActions?: (row: T, actions: Action<T>[]) => React.ReactNode;
+  formatRawData?: (row: T) => Record<string, any>;
+  pageSizeOptions?: number[];
+  renderPagination?: (table: any) => React.ReactNode;
+  renderBulkEditForm?: (selectedRows: T[], onSubmit: (values: Record<string, any>) => void) => React.ReactNode;
 }

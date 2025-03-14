@@ -1,4 +1,5 @@
 import { ColumnDef } from '@tanstack/react-table';
+import * as XLSX from 'xlsx';
 
 // Optional dependency check
 const hasXlsx = () => {
@@ -13,7 +14,8 @@ const hasXlsx = () => {
 export const exportToCSV = <T,>(
   data: T[],
   columns: ColumnDef<T>[],
-  visibleColumns: string[]
+  visibleColumns: string[],
+  fileName: string = 'exported_data.csv'
 ): void => {
   const csvContent = [
     visibleColumns.map((col) => `"${col}"`).join(','),
@@ -24,22 +26,18 @@ export const exportToCSV = <T,>(
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.setAttribute('download', 'export.csv');
+  link.setAttribute('download', fileName);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 };
 
-export const exportToExcel = <T,>(
+export const exportToExcel = <T>(
   data: T[],
   columns: ColumnDef<T>[],
-  visibleColumns: string[]
+  visibleColumns: string[],
+  fileName: string = 'exported_data.xlsx'
 ): void => {
-  if (!hasXlsx()) {
-    console.warn('XLSX library not available. Install "xlsx" to enable Excel export.');
-    return;
-  }
-  const XLSX = require('xlsx');
   const worksheetData = [
     visibleColumns,
     ...data.map((row) => visibleColumns.map((col) => (row as any)[col] ?? '')),
@@ -47,7 +45,7 @@ export const exportToExcel = <T,>(
   const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-  XLSX.writeFile(workbook, 'export.xlsx');
+  XLSX.writeFile(workbook, fileName);
 };
 
 export const exportToClipboard = <T,>(

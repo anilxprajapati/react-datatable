@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TableData } from '../types';
 import '../styles/DataTable.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 interface BulkEditModalProps<T extends TableData> {
   show: boolean;

@@ -1,31 +1,24 @@
-// components/TableHeader.tsx
 import React from 'react';
 import { flexRender } from '@tanstack/react-table';
 import { useTable } from '../context/TableContext';
 import { Action, TableData } from '../types';
+import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import '../styles/DataTable.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 interface TableHeaderProps<T extends TableData> {
   className?: string;
   renderHeader?: (header: any) => React.ReactNode;
-  sortIcons?: {
-    asc?: React.ReactNode;
-    desc?: React.ReactNode;
-    unsorted?: React.ReactNode;
-  };
-  rowSelection?: { enabled?: boolean; bulkAction?: { label: string; onClick: (selectedItems: T[]) => void } }; // Add rowSelection
-  actions?: Action<T>[]; // Add actions
-  showActionColumn: boolean; // Add showActionColumn
+  sortIcons?: { asc?: React.ReactNode; desc?: React.ReactNode; unsorted?: React.ReactNode };
+  rowSelection?: { enabled?: boolean; bulkAction?: { label: string; onClick: (selectedItems: T[]) => void } };
+  actions?: Action<T>[];
+  showActionColumn: boolean;
 }
 
 export const TableHeader = <T extends TableData>({
   className = '',
   renderHeader,
-  sortIcons = {
-    asc: '↑',
-    desc: '↓',
-    unsorted: '↕',
-  },
+  sortIcons = { asc: <FaSortUp />, desc: <FaSortDown />, unsorted: <FaSort className="text-muted" /> },
   rowSelection,
   actions = [],
   showActionColumn,
@@ -62,17 +55,16 @@ export const TableHeader = <T extends TableData>({
             const isSorted = header.column.getIsSorted();
             const canResize = header.column.getCanResize();
             const meta = header.column.columnDef.meta || {};
-            const align = meta.align || 'left';
-            const headerWidth = Math.max((header.column.columnDef.header?.length || 10) * 10, 100);
+            const align = meta.align || 'center';
 
             return (
               <th
                 key={header.id}
                 className={`${canSort ? 'sortable-header' : ''} ${canResize ? 'resizable-header' : ''} text-${align}`}
                 style={{
-                  width: `${headerWidth}px`,
-                  maxWidth: '200px',
-                  minWidth: '100px',
+                  width: `${header.column.getSize()}px`,
+                  minWidth: `${header.column.columnDef.minSize}px`,
+                  maxWidth: `${header.column.columnDef.maxSize}px`,
                   whiteSpace: 'normal',
                   wordWrap: 'break-word',
                   position: 'relative',
@@ -88,11 +80,7 @@ export const TableHeader = <T extends TableData>({
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       {canSort && (
                         <span className="sort-icon ms-1">
-                          {isSorted === 'asc'
-                            ? sortIcons.asc
-                            : isSorted === 'desc'
-                            ? sortIcons.desc
-                            : sortIcons.unsorted}
+                          {isSorted === 'asc' ? sortIcons.asc : isSorted === 'desc' ? sortIcons.desc : sortIcons.unsorted}
                         </span>
                       )}
                     </>
@@ -109,8 +97,8 @@ export const TableHeader = <T extends TableData>({
                       top: 0,
                       height: '100%',
                       width: '5px',
+                      background: '#dee2e6',
                       cursor: 'col-resize',
-                      background: '#ddd',
                     }}
                   />
                 )}

@@ -4,13 +4,14 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTable } from '../context/TableContext';
 import { Action, TableData } from '../types';
 import '../styles/DataTable.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 interface TableBodyProps<T extends TableData> {
   className?: string;
-  onRowClick?: (row: T) => void; // From DataTable
-  renderCell?: (cell: any) => React.ReactNode; // New: Custom cell rendering
-  renderActions?: (row: T, actions: Action<T>[]) => React.ReactNode; // New: Custom actions rendering
-  formatRawData?: (row: T) => Record<string, any>; // New: Custom raw data formatting
+  onRowClick?: (row: T) => void;
+  renderCell?: (cell: any) => React.ReactNode;
+  renderActions?: (row: T, actions: Action<T>[]) => React.ReactNode;
+  formatRawData?: (row: T) => Record<string, any>;
 }
 
 export const TableBody = <T extends TableData>({
@@ -62,7 +63,7 @@ export const TableBody = <T extends TableData>({
       {isLoading ? (
         <tr>
           <td colSpan={colSpan} className="text-center py-4">
-            <span>Loading...</span> {/* Spinner can be added via prop if needed */}
+            <span>Loading...</span>
           </td>
         </tr>
       ) : table.getRowModel().rows.length === 0 ? (
@@ -111,8 +112,8 @@ export const TableBody = <T extends TableData>({
                       className={`text-${cell.column.columnDef.meta?.align || 'center'}`}
                       style={{
                         width: `${cell.column.getSize()}px`,
-                        maxWidth: '200px',
-                        minWidth: '100px',
+                        minWidth: `${cell.column.columnDef.minSize}px`,
+                        maxWidth: `${cell.column.columnDef.maxSize}px`,
                         whiteSpace: 'normal',
                         wordWrap: 'break-word',
                       }}

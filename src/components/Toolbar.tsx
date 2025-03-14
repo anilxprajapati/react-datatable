@@ -1,10 +1,12 @@
-// components/Toolbar.tsx
 import React, { useMemo } from 'react';
+import { Navbar, Row, Col, Form, Button, Dropdown, InputGroup } from 'react-bootstrap';
+import { FaColumns, FaFileExport, FaFilter, FaSync } from 'react-icons/fa';
 import { useTable } from '../context/TableContext';
 import { debounce } from '../utils/debounce';
 import { exportToCSV, exportToExcel, exportToClipboard } from '../utils/exportUtils';
 import { TableData } from '../types';
 import '../styles/DataTable.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 interface ToolbarProps<T extends TableData> {
   globalFilter: string;
@@ -20,11 +22,9 @@ interface ToolbarProps<T extends TableData> {
   renderColumnToggle?: (columns: any[]) => React.ReactNode;
   rowSelection?: {
     enabled?: boolean;
-    bulkAction?: {
-      label: string;
-      onClick: (selectedItems: T[]) => void;
-    };
+    bulkAction?: { label: string; onClick: (selectedItems: T[]) => void };
   };
+  exportFileName?: string; // New: Pass export file name
 }
 
 export const Toolbar = <T extends TableData>({
@@ -40,6 +40,7 @@ export const Toolbar = <T extends TableData>({
   exportOptions = { csv: true, excel: true, clipboard: true },
   renderColumnToggle,
   rowSelection,
+  exportFileName = 'exported_data', // Default if not provided
 }: ToolbarProps<T>) => {
   const { table } = useTable<T>();
   const isServerSide = table.options.manualPagination;
@@ -62,156 +63,111 @@ export const Toolbar = <T extends TableData>({
     debouncedFilter(value);
   };
 
-  const visibleColumns = table
-    .getAllColumns()
-    .filter((col: any) => col.getIsVisible())
-    .map((col: any) => col.id);
+  const visibleColumns = table.getAllColumns().filter((col: any) => col.getIsVisible()).map((col: any) => col.id);
   const exportData = table.getRowModel().rows.map((row: any) => row.original);
-
-  const columns = table
-    .getAllColumns()
-    .filter((column: any) => column.getCanHide());
+  const columns = table.getAllColumns().filter((column: any) => column.getCanHide());
 
   return (
-    <div className={`toolbar mb-3 rounded shadow-sm ${className}`} style={{ backgroundColor: '#f8f9fa' }}>
+    <Navbar bg="light" className={`mb-3 rounded shadow-sm ${className}`}>
       <div className="container-fluid">
-        <div className="row w-100 align-items-center">
-          {/* Left Section: Search, Filters, Columns, Export */}
-          <div className="col-md-8 d-flex justify-content-left align-items-center gap-2">
-            {/* Search Input */}
-            <div className="input-group" style={{ maxWidth: '250px' }}>
-              <input
+        <Row className="w-100 align-items-center">
+          <Col md={8} className="d-flex justify-content-left align-items-center gap-2">
+            <InputGroup style={{ maxWidth: '250px' }}>
+              <Form.Control
                 type="text"
-                className="form-control"
                 placeholder="Search..."
                 value={globalFilter}
                 onChange={handleFilterChange}
               />
-              <button
-                className={`btn ${showFilters ? 'btn-primary' : 'btn-outline-primary'}`}
+              <Button
+                variant={showFilters ? 'primary' : 'outline-primary'}
                 onClick={() => setShowFilters(!showFilters)}
               >
-                <span>Filter</span>
-              </button>
-            </div>
-
-            {/* Column Toggle */}
-            {renderColumnToggle ? (
-              renderColumnToggle(columns)
-            ) : (
-              <div className="dropdown">
-                <button
-                  className="btn btn-outline-primary btn-sm dropdown-toggle"
-                  type="button"
-                  data-bs-toggle="dropdown"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <span>Columns</span>
-                </button>
-                <ul className="dropdown-menu p-2" style={{ zIndex: 1050 }}>
-                  {columns.map((column: any) => (
-                    <li key={column.id} className="mb-2">
-                      <label className="form-check">
-                        <input
-                          type="checkbox"
-                          className="form-check-input"
-                          checked={column.getIsVisible()}
-                          onChange={(e) => column.toggleVisibility(e.target.checked)}
-                        />
-                        <span className="form-check-label">{column.columnDef.header as string}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Export Dropdown */}
-            <div className="dropdown">
-              <button
-                className="btn btn-outline-primary btn-sm dropdown-toggle"
-                type="button"
-                data-bs-toggle="dropdown"
-              >
-                <span>Export</span>
-              </button>
-              <ul className="dropdown-menu" style={{ zIndex: 1050 }}>
+                <FaFilter />
+              </Button>
+            </InputGroup>
+            <Dropdown>
+              <Dropdown.Toggle variant="outline-primary" size="sm">
+                <FaColumns className='mb-1' /> Columns
+              </Dropdown.Toggle>
+              <Dropdown.Menu className="p-2" style={{ zIndex: 1050 }}>
+                {renderColumnToggle ? (
+                  renderColumnToggle(columns)
+                ) : (
+                  columns.map((column: any) => (
+                    <Form.Check
+                      key={column.id}
+                      className="mb-2 "
+                      label={column.columnDef.header as string}
+                      checked={column.getIsVisible()}
+                      onChange={(e) => column.toggleVisibility(e.target.checked)}
+                    />
+                  ))
+                )}
+              </Dropdown.Menu>
+            </Dropdown>
+            <Dropdown>
+              <Dropdown.Toggle variant="outline-primary" size="sm">
+                <FaFileExport className='mb-1' /> Export
+              </Dropdown.Toggle>
+              <Dropdown.Menu style={{ zIndex: 1050 }}>
                 {exportOptions.csv && (
-                  <li>
-                    <button
-                      className="dropdown-item"
-                      onClick={() => exportToCSV(exportData, table.getAllColumns(), visibleColumns)}
-                    >
-                      CSV
-                    </button>
-                  </li>
+                  <Dropdown.Item onClick={() => exportToCSV(exportData, table.getAllColumns(), visibleColumns, `${exportFileName}.csv`)}>
+                    CSV
+                  </Dropdown.Item>
                 )}
                 {exportOptions.excel && (
-                  <li>
-                    <button
-                      className="dropdown-item"
-                      onClick={() => exportToExcel(exportData, table.getAllColumns(), visibleColumns)}
-                    >
-                      Excel
-                    </button>
-                  </li>
+                  <Dropdown.Item
+                    onClick={() => exportToExcel(exportData, table.getAllColumns(), visibleColumns, `${exportFileName}.xlsx`)}
+                  >
+                    Excel
+                  </Dropdown.Item>
                 )}
                 {exportOptions.clipboard && (
-                  <li>
-                    <button
-                      className="dropdown-item"
-                      onClick={() => exportToClipboard(exportData, table.getAllColumns(), visibleColumns)}
-                    >
-                      Copy to Clipboard
-                    </button>
-                  </li>
+                  <Dropdown.Item onClick={() => exportToClipboard(exportData, table.getAllColumns(), visibleColumns)}>
+                    Copy to Clipboard
+                  </Dropdown.Item>
                 )}
-              </ul>
-            </div>
-
-            {/* Refresh Button */}
+              </Dropdown.Menu>
+            </Dropdown>
             {isServerSide && fetchTableData && (
-              <button
-                className="btn btn-outline-primary btn-sm"
+              <Button
+                variant="outline-primary"
+                size="sm"
                 onClick={fetchTableData}
                 disabled={isLoading}
               >
-                <span className={isLoading ? 'spin' : ''}>Refresh</span>
-              </button>
+                <FaSync className={`${isLoading ? 'spin' : ''} mb-1`} /> Refresh
+              </Button>
             )}
-
-            {/* Custom Buttons */}
             {customButtons.map((button, index) => (
               <React.Fragment key={index}>{button}</React.Fragment>
             ))}
-          </div>
-
-          {/* Right Section: Selection Actions */}
-          <div className="col-md-4 d-flex justify-content-end gap-2">
+          </Col>
+          <Col md={4} className="d-flex justify-content-end gap-2">
             {selectedRows > 0 && rowSelection?.bulkAction && (
               <div className="selected-actions d-flex align-items-center me-3">
                 <span className="badge bg-primary me-2">{selectedRows} selected</span>
-                <button
-                  className="btn btn-outline-primary btn-sm me-1"
+                <Button
+                  variant="outline-primary"
+                  size="sm"
                   onClick={() =>
                     allRowsSelected
                       ? onBulkEditClick(selectedItems)
-                      : rowSelection.bulkAction?.onClick(selectedItems) // Safe access with optional chaining
+                      : rowSelection.bulkAction?.onClick(selectedItems)
                   }
+                  className="me-1"
                 >
-                  {allRowsSelected ? 'Bulk Edit' : rowSelection.bulkAction?.label ?? 'Action'} {/* Fallback label */}
-                </button>
-                <button
-                  className="btn btn-outline-danger btn-sm"
-                  onClick={() => table.resetRowSelection()}
-                >
+                  {allRowsSelected ? 'Bulk Edit' : rowSelection.bulkAction?.label ?? 'Action'}
+                </Button>
+                <Button variant="outline-danger" size="sm" onClick={() => table.resetRowSelection()}>
                   Clear
-                </button>
+                </Button>
               </div>
             )}
-          </div>
-        </div>
+          </Col>
+        </Row>
       </div>
-    </div>
+    </Navbar>
   );
 };

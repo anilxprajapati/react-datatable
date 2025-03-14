@@ -13,33 +13,17 @@ import {
   ExpandedState,
   GroupingState,
 } from '@tanstack/react-table';
-import { TableConfig, TableData, PaginationResponse, Action } from '../types';
+import { TableConfig, TableData, PaginationResponse, Action, DataTableProps } from '../types';
 import { Toolbar } from './Toolbar';
 import { TableFilters } from './TableFilters';
 import { TableHeader } from './TableHeader';
 import { TableBody } from './TableBody';
 import { TablePagination } from './TablePagination';
 import { BulkEditModal } from './BulkEditModal';
-import '../styles/DataTable.css';
 import { TableProvider } from '../context/TableContext';
-
-interface DataTableProps<T extends TableData> {
-  config: TableConfig<T>;
-  className?: string;
-  style?: React.CSSProperties;
-  onRowClick?: (row: T) => void;
-  renderToolbar?: (table: any) => React.ReactNode;
-  renderFilter?: (column: any) => React.ReactNode;
-  filterTypes?: Record<string, 'text' | 'select' | ((column: any) => React.ReactNode)>;
-  renderHeader?: (header: any) => React.ReactNode;
-  sortIcons?: { asc?: React.ReactNode; desc?: React.ReactNode; unsorted?: React.ReactNode };
-  renderCell?: (cell: any) => React.ReactNode;
-  renderActions?: (row: T, actions: Action<T>[]) => React.ReactNode;
-  formatRawData?: (row: T) => Record<string, any>;
-  pageSizeOptions?: number[];
-  renderPagination?: (table: any) => React.ReactNode;
-  renderBulkEditForm?: (selectedRows: T[], onSubmit: (values: Record<string, any>) => void) => React.ReactNode;
-}
+import { getFilteredRowModel } from '@tanstack/react-table';
+import '../styles/DataTable.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 export const DataTable = <T extends TableData>({
   config,
@@ -67,13 +51,14 @@ export const DataTable = <T extends TableData>({
     actions = [],
     styleConfig = { padding: 'standard', theme: 'light' },
     enableRawData = false,
+    exportFileName = 'exported_data', // Default file name if not provided
   } = config;
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [globalFilter, setGlobalFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [data, setData] = useState<T[]>(initialData);
-  const [totalRows, setTotalRows] = useState(pagination.initialState?.totalRows || initialData.length);
+  const [totalRows, setTotalRows] = useState<number>(pagination.initialState?.totalRows ?? initialData.length);
   const [isLoading, setIsLoading] = useState(false);
   const [paginationState, setPaginationState] = useState<PaginationState>({
     pageIndex: pagination.initialState?.pageIndex ?? 0,
@@ -161,6 +146,7 @@ export const DataTable = <T extends TableData>({
   const showActionColumn = Object.keys(rowSelectionState).length === 1;
 
   const handleBulkEditClick = (rows: T[]) => {
+    console.log('Bulk edit clicked with rows:', rows);
     setSelectedRowsForModal(rows);
     setShowBulkEditModal(true);
   };
@@ -187,7 +173,8 @@ export const DataTable = <T extends TableData>({
             customButtons={[]}
             exportOptions={{ csv: true, excel: true, clipboard: true }}
             renderColumnToggle={undefined}
-            rowSelection={rowSelection} // Added to match Toolbar.tsx expectation
+            rowSelection={rowSelection}
+            exportFileName={exportFileName} // Pass exportFileName to Toolbar
           />
         )}
         {showFilters && (
@@ -197,12 +184,25 @@ export const DataTable = <T extends TableData>({
             filterTypes={filterTypes}
           />
         )}
-        <div ref={tableContainerRef} className="table-container" style={{ height: '450px', overflowY: 'auto', overflowX: 'auto' }}>
-          <table className={`data-table table table-striped table-hover table-${styleConfig.padding}`}>
+        <div ref={tableContainerRef} className="table-container" style={{ height: '485px', overflowY: 'auto', overflowX: 'auto' }}>
+        <table 
+            className={`data-table table table-striped table-hover table-${styleConfig.padding}`}
+            style={{ 
+              tableLayout: 'auto', // Allow columns to size naturally within constraints
+              width: 'max-content', // Prevent shrinking, allow scrolling
+              minWidth: '100%', // Ensure it fills container when fewer columns
+            }}
+          >
             <TableHeader
               className=""
               renderHeader={renderHeader}
-              sortIcons={sortIcons || { asc: '↑', desc: '↓', unsorted: '↕' }}
+              sortIcons={
+                sortIcons || {
+                  asc: <span>↑</span>,
+                  desc: <span>↓</span>,
+                  unsorted: <span>↕</span>,
+                }
+              }
               rowSelection={rowSelection}
               actions={actions}
               showActionColumn={showActionColumn}
@@ -227,7 +227,7 @@ export const DataTable = <T extends TableData>({
             onHide={() => setShowBulkEditModal(false)}
             columns={columns}
             selectedRows={selectedRowsForModal}
-            onBulkEditSubmit={rowSelection?.bulkAction?.onClick || (() => {})}
+            onBulkEditSubmit={rowSelection.bulkAction?.onClick ?? (() => {})}
             renderBulkEditForm={renderBulkEditForm}
           />
         )}

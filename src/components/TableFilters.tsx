@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTable } from '../context/TableContext';
 import '../styles/DataTable.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 interface TableFiltersProps {
   className?: string;
