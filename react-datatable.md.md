@@ -47,18 +47,17 @@ const columns = [
   {
     accessorKey: 'id',
     header: 'ID',
-    enableSorting: true,
-    meta: { align: 'center' },
+    meta: { sortable: true, width: 100, align: 'center' },
   },
   {
     accessorKey: 'name',
     header: 'Name',
-    enableSorting: true,
-    enableColumnFilter: true,
+    meta: { sortable: true },
   },
   {
     accessorKey: 'email',
     header: 'Email',
+    meta: { sortable: true },
   },
 ];
 
@@ -71,13 +70,15 @@ const App = () => {
   return (
     <div>
       <DataTable
-        columns={columns}
-        data={data}
-        pagination={{
-          mode: 'client',
-          initialState: { pageIndex: 0, pageSize: 10 },
+        config={{
+          columns,
+          data,
+          pagination: {
+            mode: 'client',
+            initialState: { pageIndex: 0, pageSize: 10 },
+          },
+          styleConfig: { theme: 'light', padding: 'standard' }
         }}
-        styleConfig={{ theme: 'light', padding: 'standard' }}
       />
     </div>
   );
@@ -90,53 +91,108 @@ export default App;
 
 ```jsx
 import React, { useState } from 'react';
-import { DataTable } from '@myorg/react-datatable';
+import { TableConfig, PaginationResponse } from '@myorg/react-datatable';
+import DataTable from '@myorg/react-datatable';
+import { FaEdit, FaSave, FaTrash } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-const columns = [
-  { accessorKey: 'id', header: 'ID', enableSorting: true },
-  { accessorKey: 'name', header: 'Name', enableSorting: true },
-  { accessorKey: 'email', header: 'Email' },
-];
+interface MockData {
+  id: number;
+  name: string;
+  age: number;
+  email: string;
+}
 
-const App = () => {
-  const [isLoading, setIsLoading] = useState(false);
+const Demo = () => {
+  const [tableData, setTableData] = useState<MockData[]>([]);
 
-  const fetchData = async ({ pageIndex, pageSize, sortBy, filters }) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `https://api.example.com/data?page=${pageIndex + 1}&limit=${pageSize}`
-      );
-      const result = await response.json();
-      return {
-        data: result.data, // Array of items
-        totalSize: result.total, // Total number of rows
-      };
-    } catch (error) {
-      console.error('Fetch error:', error);
-      return { data: [], totalSize: 0 };
-    } finally {
-      setIsLoading(false);
-    }
+  const fetchMockData = async ({ pageIndex, pageSize }: any): Promise<PaginationResponse<MockData>> => {
+    // Simulate API call with delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const data = Array.from({ length: pageSize }, (_, i) => ({
+      id: pageIndex * pageSize + i + 1,
+      name: `User ${pageIndex * pageSize + i + 1}`,
+      age: Math.floor(Math.random() * 50) + 18,
+      email: `user${pageIndex * pageSize + i + 1}@example.com`,
+    }));
+    
+    return { data, totalsize: 100 };
+  };
+
+  const handleEdit = (row: MockData) => {
+    console.log('Edit:', row);
+    // Add your edit logic here
+  };
+
+  const handleDelete = (row: MockData) => {
+    console.log('Delete:', row);
+    setTableData(prev => prev.filter(item => item.id !== row.id));
+  };
+
+  const handleSave = (row: MockData) => {
+    console.log('Save:', row);
+    // Add your save logic here
+  };
+
+  const handleBulkEdit = (selectedRows: MockData[]) => {
+    console.log('Bulk Edit:', selectedRows);
+    // Add your bulk edit logic here
+  };
+
+  const columns = [
+    { accessorKey: 'id', header: 'ID', meta: { sortable: true, width: 100, align: 'center' } },
+    { accessorKey: 'name', header: 'Name', meta: { sortable: true } },
+    { accessorKey: 'age', header: 'Age', meta: { sortable: true } },
+    { accessorKey: 'email', header: 'Email', meta: { sortable: true } },
+  ];
+
+  const tableConfig: TableConfig<MockData> = {
+    columns,
+    fetchData: fetchMockData,
+    pagination: { 
+      mode: 'server', 
+      initialState: { pageIndex: 0, pageSize: 10, totalRows: 100 } 
+    },
+    rowSelection: {
+      enabled: true,
+      bulkAction: { 
+        label: 'Bulk Edit', 
+        onClick: handleBulkEdit 
+      },
+    },
+    styleConfig: { padding: 'standard', theme: 'light' },
+    enableRawData: true,
+    actions: [
+      { 
+        label: 'Edit', 
+        icon: <FaEdit />, 
+        onClick: handleEdit, 
+        visible: (row) => row.age >= 18 // Example visibility condition
+      },
+      { 
+        label: 'Delete', 
+        icon: <FaTrash />, 
+        onClick: handleDelete, 
+        visible: () => true // Always visible
+      },
+      { 
+        label: 'Save', 
+        icon: <FaSave />, 
+        onClick: handleSave, 
+        visible: (row) => row.id % 2 === 0 // Example: visible for even IDs
+      },
+    ],
   };
 
   return (
-    <div>
-      <DataTable
-        columns={columns}
-        fetchData={fetchData}
-        pagination={{
-          mode: 'server',
-          initialState: { pageIndex: 0, pageSize: 10 },
-        }}
-        styleConfig={{ theme: 'light', padding: 'standard' }}
-      />
+    <div style={{ padding: '20px' }}>
+      <DataTable config={tableConfig} />
     </div>
   );
 };
 
-export default App;
+export default Demo;
 ```
 
 ## Configuration Options
@@ -145,26 +201,48 @@ The `DataTable` component accepts a `TableConfig` object with the following prop
 
 | Property            | Type                                      | Description                                                                 |
 |---------------------|-------------------------------------------|-----------------------------------------------------------------------------|
-| `columns`           | `ColumnDef<T>[]`                         | Array of column definitions (from `@tanstack/react-table`).                 |
+| `columns`           | `ColumnDef<T>[]`                         | Array of column definitions with meta properties for sortable, width, align. |
 | `data`              | `T[]`                                    | Data array for client-side pagination.                                      |
 | `fetchData`         | `(params: FetchState) => Promise<PaginationResponse<T>>` | Function for server-side data fetching.                     |
 | `pagination`        | `{ mode?: 'server' \| 'client'; initialState?: { pageIndex?: number; pageSize?: number; totalRows?: number } }` | Pagination configuration.                  |
 | `rowSelection`      | `{ enabled?: boolean; bulkAction?: { label: string; onClick: (selectedItems: T[]) => void } }` | Row selection and bulk action settings.    |
-| `actions`           | `Action<T>[]`                            | Array of row-level actions (e.g., Edit, Delete).                            |
+| `actions`           | `Action<T>[]`                            | Array of row-level actions with icons and conditional visibility.           |
 | `styleConfig`       | `{ padding?: 'standard' \| 'compact' \| 'comfortable'; theme?: 'light' \| 'dark' }` | Styling options.                          |
 | `enableRawData`     | `boolean`                                | Enable expandable rows to show raw data in JSON format.                     |
 
 ### Column Definition
-Columns use `@tanstack/react-table`'s `ColumnDef` type. Example:
+Columns use extended `ColumnDef` type with additional meta properties:
 ```jsx
 const columns = [
   {
     accessorKey: 'name',
     header: 'Name',
-    enableSorting: true,
-    enableColumnFilter: true,
-    meta: { align: 'left', filterOptions: ['Option1', 'Option2'] }, // Custom metadata
+    meta: { 
+      sortable: true,
+      width: 200,
+      align: 'left',
+      filterOptions: ['Option1', 'Option2'] 
+    }
   },
+];
+```
+
+### Row Actions
+Define actions with icons and conditional visibility:
+```jsx
+const actions = [
+  { 
+    label: 'Edit', 
+    icon: <FaEdit />, 
+    onClick: handleEdit, 
+    visible: (row) => row.age >= 18 // Conditional visibility
+  },
+  { 
+    label: 'Delete', 
+    icon: <FaTrash />, 
+    onClick: handleDelete, 
+    visible: () => true // Always visible
+  }
 ];
 ```
 
@@ -172,24 +250,26 @@ const columns = [
 You can customize rendering for headers, cells, filters, and pagination:
 ```jsx
 <DataTable
-  columns={columns}
-  data={data}
-  renderHeader={(header) => <strong>{header.column.columnDef.header}</strong>}
-  renderCell={(cell) => <span>{cell.getValue()}</span>}
-  renderFilter={(column) => (
-    <input
-      type="text"
-      value={column.getFilterValue() || ''}
-      onChange={(e) => column.setFilterValue(e.target.value)}
-    />
-  )}
-  renderPagination={(table) => (
-    <div>
-      <button onClick={() => table.previousPage()}>Prev</button>
-      <span>Page {table.getState().pagination.pageIndex + 1}</span>
-      <button onClick={() => table.nextPage()}>Next</button>
-    </div>
-  )}
+  config={{
+    columns,
+    data,
+    renderHeader: (header) => <strong>{header.column.columnDef.header}</strong>,
+    renderCell: (cell) => <span>{cell.getValue()}</span>,
+    renderFilter: (column) => (
+      <input
+        type="text"
+        value={column.getFilterValue() || ''}
+        onChange={(e) => column.setFilterValue(e.target.value)}
+      />
+    ),
+    renderPagination: (table) => (
+      <div>
+        <button onClick={() => table.previousPage()}>Prev</button>
+        <span>Page {table.getState().pagination.pageIndex + 1}</span>
+        <button onClick={() => table.nextPage()}>Next</button>
+      </div>
+    )
+  }}
 />
 ```
 
@@ -206,9 +286,11 @@ You can customize rendering for headers, cells, filters, and pagination:
 Customize export options:
 ```jsx
 <DataTable
-  columns={columns}
-  data={data}
-  exportOptions={{ csv: true, excel: false, clipboard: true }}
+  config={{
+    columns,
+    data,
+    exportOptions: { csv: true, excel: false, clipboard: true }
+  }}
 />
 ```
 

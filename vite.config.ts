@@ -11,7 +11,7 @@ export default defineConfig({
     lib: {
       entry: 'src/index.ts',
       name: 'ReactDataTable',
-      fileName: (format) => `index.${format}.js`,
+      fileName: (format) => `index.${format === 'es' ? 'esm' : 'cjs'}.js`, // Updated to output index.esm.js
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
