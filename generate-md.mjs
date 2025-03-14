@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const ROOT_DIR = path.join(__dirname, '.'); // Adjust to your project's source directory
+const ROOT_DIR = path.join(__dirname, './src'); // Adjust to your project's source directory
 const OUTPUT_FILE = path.join(__dirname, 'project-files.md');
 const EXCLUDE_DIRS = ['node_modules', 'public', '.git', 'dist', 'build'];
 const EXCLUDE_EXTENSIONS = ['.svg']; // ✅ Only skipping SVG files
