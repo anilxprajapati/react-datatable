@@ -1,10 +1,9 @@
+// components/TableHeader.tsx
 import React from 'react';
 import { flexRender } from '@tanstack/react-table';
 import { useTable } from '../context/TableContext';
 import { Action, TableData, TableHeaderProps } from '../types';
 import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
-import '../styles/DataTable.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
 
 export const TableHeader = <T extends TableData>({
   className = '',
@@ -17,8 +16,7 @@ export const TableHeader = <T extends TableData>({
   const { table } = useTable<T>();
   const headerGroups = table.getHeaderGroups();
 
-  if (!headerGroups || !Array.isArray(headerGroups) || headerGroups.length === 0) {
-    console.error('TableHeader - No header groups available');
+  if (!headerGroups.length) {
     return (
       <thead>
         <tr>
@@ -61,9 +59,10 @@ export const TableHeader = <T extends TableData>({
                   position: 'relative',
                   cursor: canSort ? 'pointer' : 'default',
                 }}
-                onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
               >
-                <div className="header-content d-flex justify-content-center align-items-center">
+                <div className="header-content d-flex justify-content-center align-items-center"
+                onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                >
                   {renderHeader ? (
                     renderHeader(header)
                   ) : (

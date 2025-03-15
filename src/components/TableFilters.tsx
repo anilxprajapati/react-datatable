@@ -1,7 +1,5 @@
 import React from 'react';
 import { useTable } from '../context/TableContext';
-import '../styles/DataTable.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
 import { TableFiltersProps } from 'types';
 
 export const TableFilters = ({

@@ -1,9 +1,9 @@
+// components/DataTable.tsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
   getExpandedRowModel,
-  getGroupedRowModel,
   getSortedRowModel,
   PaginationState,
   SortingState,
@@ -11,7 +11,6 @@ import {
   VisibilityState,
   RowSelectionState,
   ExpandedState,
-  GroupingState,
 } from '@tanstack/react-table';
 import { TableConfig, TableData, PaginationResponse, Action, DataTableProps } from '../types';
 import { Toolbar } from './Toolbar';
@@ -40,6 +39,7 @@ export const DataTable = <T extends TableData>({
   pageSizeOptions,
   renderPagination,
   renderBulkEditForm,
+  onSave,
 }: DataTableProps<T>) => {
   const {
     columns,
@@ -51,6 +51,8 @@ export const DataTable = <T extends TableData>({
     styleConfig = { padding: 'standard', theme: 'light' },
     enableRawData = false,
     exportFileName = 'exported_data',
+    bulkEditConfig,
+    onBulkEditComplete,
   } = config;
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -69,9 +71,9 @@ export const DataTable = <T extends TableData>({
   const [rowSelectionState, setRowSelectionState] = useState<RowSelectionState>({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
-  const [grouping, setGrouping] = useState<GroupingState>([]);
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [selectedRowsForModal, setSelectedRowsForModal] = useState<T[]>([]);
+  const [editableRowId, setEditableRowId] = useState<string | null>(null); // Added state
 
   const isServerSide = pagination.mode === 'server';
   const isLoading = isFetching || isRendering;
@@ -80,7 +82,7 @@ export const DataTable = <T extends TableData>({
     if (!fetchData || !isServerSide) return;
     setIsFetching(true);
     setIsRendering(true);
-    setData([]); // Clear data immediately on refresh
+    setData([]);
     try {
       const params = {
         pageIndex: paginationState.pageIndex,
@@ -108,6 +110,15 @@ export const DataTable = <T extends TableData>({
     }
   }, [paginationState.pageIndex, paginationState.pageSize, sorting, globalFilter, JSON.stringify(columnFilters)]);
 
+  const handleSaveRow = (updatedRow: T) => {
+    if (!isServerSide) {
+      setData((prev) =>
+        prev.map((row) => (row.id === updatedRow.id ? updatedRow : row))
+      );
+    }
+    if (onSave) onSave(updatedRow);
+  };
+
   const table = useReactTable({
     data: isServerSide ? data : initialData,
     columns: useMemo(() => columns, [columns]),
@@ -119,7 +130,6 @@ export const DataTable = <T extends TableData>({
       rowSelection: rowSelectionState,
       columnVisibility,
       expanded,
-      grouping,
     },
     onPaginationChange: setPaginationState,
     onSortingChange: setSorting,
@@ -128,10 +138,8 @@ export const DataTable = <T extends TableData>({
     onRowSelectionChange: setRowSelectionState,
     onColumnVisibilityChange: setColumnVisibility,
     onExpandedChange: setExpanded,
-    onGroupingChange: setGrouping,
     getCoreRowModel: getCoreRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
-    getGroupedRowModel: getGroupedRowModel(),
     getSortedRowModel: getSortedRowModel(),
     manualPagination: isServerSide,
     manualSorting: isServerSide,
@@ -143,22 +151,45 @@ export const DataTable = <T extends TableData>({
     enableColumnResizing: true,
     columnResizeMode: 'onChange',
     getRowCanExpand: () => !!enableRawData,
-    meta: { config, isLoading, fetchTableData },
+    meta: { 
+      config, 
+      isLoading, 
+      fetchTableData, 
+      handleSaveRow,
+      setEditableRowId, // Pass setter to TableBody
+    },
   });
 
-  const showActionColumn = Object.keys(rowSelectionState).length === 1;
+  const showActionColumn = actions.length > 0;
 
   const handleBulkEditClick = (rows: T[]) => {
-    console.log('Bulk edit clicked with rows:', rows);
     setSelectedRowsForModal(rows);
     setShowBulkEditModal(true);
   };
 
-  const handleRenderingComplete = () => {
-    if (!isFetching) {
-      setIsRendering(false); // Only stop rendering state when fetching is also done
+  const handleBulkEditSubmit = (updatedRows: T[]) => {
+    if (isServerSide) {
+      fetchTableData();
+    } else {
+      setData((prev) =>
+        prev.map((row) =>
+          updatedRows.some((u) => u.id === row.id) ? updatedRows.find((u) => u.id === row.id)! : row
+        )
+      );
     }
+    if (onBulkEditComplete) onBulkEditComplete(updatedRows);
   };
+
+  const handleRenderingComplete = () => {
+    if (!isFetching) setIsRendering(false);
+  };
+
+  const effectiveBulkEditConfig = bulkEditConfig || columns.map((col) => ({
+    accessorKey: col.accessorKey,
+    header: col.header,
+    isEditable: col.enableColumnFilter !== false,
+    fieldType: 'text',
+  }));
 
   if (!table.getHeaderGroups().length && isLoading) {
     return (
@@ -170,7 +201,7 @@ export const DataTable = <T extends TableData>({
 
   return (
     <div className={`data-table-container theme-${styleConfig.theme} ${className}`} style={style}>
-      <TableProvider table={table}>
+      <TableProvider table={table} editableRowId={editableRowId}>
         {renderToolbar ? (
           renderToolbar(table)
         ) : (
@@ -185,41 +216,24 @@ export const DataTable = <T extends TableData>({
             onBulkEditClick={handleBulkEditClick}
             customButtons={[]}
             exportOptions={{ csv: true, excel: true, clipboard: true }}
-            renderColumnToggle={undefined}
             rowSelection={rowSelection}
             exportFileName={exportFileName}
           />
         )}
-        {showFilters && (
-          <TableFilters
-            className=""
-            renderFilter={renderFilter}
-            filterTypes={filterTypes}
-          />
-        )}
+        {showFilters && <TableFilters className="" renderFilter={renderFilter} filterTypes={filterTypes} />}
         <div
           ref={tableContainerRef}
-          className="table-container" // Removed loading-dimmed class
+          className="table-container"
           style={{ height: '485px', overflowY: 'auto', overflowX: 'auto', position: 'relative' }}
         >
           <table
             className={`data-table table table-striped table-hover table-${styleConfig.padding}`}
-            style={{
-              tableLayout: 'auto',
-              width: 'max-content',
-              minWidth: '100%',
-            }}
+            style={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
           >
             <TableHeader
               className=""
               renderHeader={renderHeader}
-              sortIcons={
-                sortIcons || {
-                  asc: <span>↑</span>,
-                  desc: <span>↓</span>,
-                  unsorted: <span>↕</span>,
-                }
-              }
+              sortIcons={sortIcons || { asc: <span>↑</span>, desc: <span>↓</span>, unsorted: <span>↕</span> }}
               rowSelection={rowSelection}
               actions={actions}
               showActionColumn={showActionColumn}
@@ -234,18 +248,15 @@ export const DataTable = <T extends TableData>({
             />
           </table>
         </div>
-        <TablePagination
-          className=""
-          pageSizeOptions={pageSizeOptions}
-          renderPagination={renderPagination}
-        />
+        <TablePagination className="" pageSizeOptions={pageSizeOptions} renderPagination={renderPagination} />
         {rowSelection?.bulkAction && (
           <BulkEditModal
             show={showBulkEditModal}
             onHide={() => setShowBulkEditModal(false)}
-            columns={columns}
+            bulkEditConfig={effectiveBulkEditConfig}
             selectedRows={selectedRowsForModal}
-            onBulkEditSubmit={rowSelection.bulkAction?.onClick ?? (() => {})}
+            onBulkEditSubmit={handleBulkEditSubmit}
+            onBulkEditComplete={onBulkEditComplete}
             renderBulkEditForm={renderBulkEditForm}
           />
         )}

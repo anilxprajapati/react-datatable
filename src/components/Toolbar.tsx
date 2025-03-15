@@ -1,3 +1,4 @@
+// components/Toolbar.tsx
 import React, { useMemo, useState } from 'react';
 import { Navbar, Row, Col, Form, Button, Dropdown, InputGroup, Spinner } from 'react-bootstrap';
 import { FaColumns, FaFileExport, FaFilter, FaSync } from 'react-icons/fa';
@@ -5,8 +6,6 @@ import { useTable } from '../context/TableContext';
 import { debounce } from '../utils/debounce';
 import { exportToCSV, exportToExcel, exportToClipboard } from '../utils/exportUtils';
 import { TableData, ToolbarProps } from '../types';
-import '../styles/DataTable.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
 
 export const Toolbar = <T extends TableData>({
   globalFilter,
@@ -23,9 +22,10 @@ export const Toolbar = <T extends TableData>({
   rowSelection,
   exportFileName = 'exported_data',
 }: ToolbarProps<T>) => {
-  const { table } = useTable<T>();
+  const { table, editableRowId } = useTable<T>();
   const isServerSide = table.options.manualPagination;
-  const selectedRows = Object.keys(table.getState().rowSelection).length;
+  // Count only rows where the selection value is true
+  const selectedRows = Object.values(table.getState().rowSelection).filter(Boolean).length;
   const allRowsSelected = table.getIsAllRowsSelected();
   const selectedItems = table.getSelectedRowModel().rows.map((row: any) => row.original) as T[];
   const [isExportingExcel, setIsExportingExcel] = useState(false);
@@ -58,6 +58,14 @@ export const Toolbar = <T extends TableData>({
     } finally {
       setIsExportingExcel(false);
     }
+  };
+
+  const handleBulkEdit = () => {
+    if (editableRowId) {
+      alert('Please save the currently edited row before proceeding with bulk edit.');
+      return;
+    }
+    onBulkEditClick(selectedItems);
   };
 
   return (
@@ -149,20 +157,16 @@ export const Toolbar = <T extends TableData>({
             ))}
           </Col>
           <Col md={4} className="d-flex justify-content-end gap-2">
-            {selectedRows > 1 && rowSelection?.bulkAction && (  // Changed from selectedRows > 0 to selectedRows > 1
+            {selectedRows > 1 && rowSelection?.bulkAction && (
               <div className="selected-actions d-flex align-items-center me-3">
                 <span className="badge bg-primary me-2">{selectedRows} selected</span>
                 <Button
                   variant="outline-primary"
                   size="sm"
-                  onClick={() =>
-                    allRowsSelected
-                      ? onBulkEditClick(selectedItems)
-                      : rowSelection.bulkAction?.onClick(selectedItems)
-                  }
+                  onClick={handleBulkEdit}
                   className="me-1"
                 >
-                  {allRowsSelected ? 'Bulk Edit' : rowSelection.bulkAction?.label ?? 'Action'}
+                  {rowSelection.bulkAction.label || 'Bulk Edit'}
                 </Button>
                 <Button variant="outline-danger" size="sm" onClick={() => table.resetRowSelection()}>
                   Clear

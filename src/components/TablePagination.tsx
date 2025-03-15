@@ -1,9 +1,7 @@
 import React, { useMemo } from 'react';
 import { Row, Col, Form, Pagination as BootstrapPagination } from 'react-bootstrap';
 import { useTable } from '../context/TableContext';
-import '../styles/DataTable.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { TablePaginationProps } from 'types';
+import { TablePaginationProps } from './../types/index';
 
 export const TablePagination = ({
   className = '',
