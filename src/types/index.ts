@@ -1,3 +1,4 @@
+// types/index.ts
 import { SortingState } from '@tanstack/react-table';
 
 export interface TableData {
@@ -52,13 +53,18 @@ export interface TableConfig<T extends TableData> {
     theme?: 'light' | 'dark';
   };
   enableRawData?: boolean;
-  exportFileName?: string; // New: Optional export file name
+  exportFileName?: string;
+  bulkEditConfig?: BulkEditFieldConfig[];
+  onBulkEditComplete?: (updatedRows: T[]) => void;
+  defaultFieldType?: 'text' | 'textarea' | 'select';
 }
 
 export interface TableMeta<T extends TableData> {
   config: TableConfig<T>;
   isLoading: boolean;
   fetchTableData: () => Promise<void>;
+  handleSaveRow?: (updatedRow: T) => void;
+  setEditableRowId?: (id: string | null) => void;
 }
 
 export interface DataTableProps<T extends TableData> {
@@ -77,21 +83,42 @@ export interface DataTableProps<T extends TableData> {
   pageSizeOptions?: number[];
   renderPagination?: (table: any) => React.ReactNode;
   renderBulkEditForm?: (selectedRows: T[], onSubmit: (values: Record<string, any>) => void) => React.ReactNode;
+  onSave?: (updatedRow: T) => void;
 }
 
 export interface TablePaginationProps {
   className?: string;
   renderPagination?: (table: any) => React.ReactNode;
-  pageSizeOptions?: number[]; // ✅ Add this line
+  pageSizeOptions?: number[];
+}
+
+export interface DependentFieldConfig {
+  accessorKey: string;
+  header: string;
+  fieldType: 'text' | 'textarea' | 'select';
+  isRequired?: boolean;
+  isEditable?: boolean;
+  options?: { value: string; label: string }[];
+}
+
+export interface BulkEditFieldConfig {
+  accessorKey: string;
+  header: string;
+  isEditable?: boolean; // Added to control editability
+  isRequired?: boolean;
+  fieldType?: 'text' | 'textarea' | 'select';
+  options?: { value: string; label: string }[];
+  dependencies?: Record<string, DependentFieldConfig[]>;
 }
 
 export interface BulkEditModalProps<T extends TableData> {
   show: boolean;
   onHide: () => void;
-  columns: any[];
+  bulkEditConfig: BulkEditFieldConfig[];
   selectedRows: T[];
   onBulkEditSubmit: (selectedItems: T[]) => void;
-  renderBulkEditForm?: (selectedRows: T[], onSubmit: (values: Record<string, any>) => void) => React.ReactNode; // New: Custom form rendering
+  onBulkEditComplete?: (updatedRows: T[]) => void;
+  renderBulkEditForm?: (selectedRows: T[], onSubmit: (values: Record<string, any>) => void) => React.ReactNode;
 }
 
 export interface TableBodyProps<T extends TableData> {
@@ -105,8 +132,8 @@ export interface TableBodyProps<T extends TableData> {
 
 export interface TableFiltersProps {
   className?: string;
-  renderFilter?: (column: any) => React.ReactNode; // New: Custom filter rendering
-  filterTypes?: Record<string, 'text' | 'select' | ((column: any) => React.ReactNode)>; // New: Filter type customization
+  renderFilter?: (column: any) => React.ReactNode;
+  filterTypes?: Record<string, 'text' | 'select' | ((column: any) => React.ReactNode)>;
 }
 
 export interface TableHeaderProps<T extends TableData> {
@@ -134,5 +161,5 @@ export interface ToolbarProps<T extends TableData> {
     enabled?: boolean;
     bulkAction?: { label: string; onClick: (selectedItems: T[]) => void };
   };
-  exportFileName?: string; // New: Pass export file name
+  exportFileName?: string;
 }
