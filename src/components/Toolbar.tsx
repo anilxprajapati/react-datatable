@@ -1,31 +1,12 @@
-import React, { useMemo } from 'react';
-import { Navbar, Row, Col, Form, Button, Dropdown, InputGroup } from 'react-bootstrap';
+import React, { useMemo, useState } from 'react';
+import { Navbar, Row, Col, Form, Button, Dropdown, InputGroup, Spinner } from 'react-bootstrap';
 import { FaColumns, FaFileExport, FaFilter, FaSync } from 'react-icons/fa';
 import { useTable } from '../context/TableContext';
 import { debounce } from '../utils/debounce';
 import { exportToCSV, exportToExcel, exportToClipboard } from '../utils/exportUtils';
-import { TableData } from '../types';
+import { TableData, ToolbarProps } from '../types';
 import '../styles/DataTable.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-interface ToolbarProps<T extends TableData> {
-  globalFilter: string;
-  setGlobalFilter: (value: string) => void;
-  showFilters: boolean;
-  setShowFilters: (value: boolean) => void;
-  isLoading: boolean;
-  fetchTableData?: () => void;
-  className?: string;
-  onBulkEditClick: (selectedItems: T[]) => void;
-  customButtons?: React.ReactNode[];
-  exportOptions?: { csv?: boolean; excel?: boolean; clipboard?: boolean };
-  renderColumnToggle?: (columns: any[]) => React.ReactNode;
-  rowSelection?: {
-    enabled?: boolean;
-    bulkAction?: { label: string; onClick: (selectedItems: T[]) => void };
-  };
-  exportFileName?: string; // New: Pass export file name
-}
 
 export const Toolbar = <T extends TableData>({
   globalFilter,
@@ -40,20 +21,20 @@ export const Toolbar = <T extends TableData>({
   exportOptions = { csv: true, excel: true, clipboard: true },
   renderColumnToggle,
   rowSelection,
-  exportFileName = 'exported_data', // Default if not provided
+  exportFileName = 'exported_data',
 }: ToolbarProps<T>) => {
   const { table } = useTable<T>();
   const isServerSide = table.options.manualPagination;
   const selectedRows = Object.keys(table.getState().rowSelection).length;
   const allRowsSelected = table.getIsAllRowsSelected();
   const selectedItems = table.getSelectedRowModel().rows.map((row: any) => row.original) as T[];
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   const debouncedFilter = useMemo(
-    () =>
-      debounce((value: string) => {
-        table.setGlobalFilter(value);
-        table.setPageIndex(0);
-      }, 300),
+    () => debounce((value: string) => {
+      table.setGlobalFilter(value);
+      table.setPageIndex(0);
+    }, 300),
     [table]
   );
 
@@ -66,6 +47,18 @@ export const Toolbar = <T extends TableData>({
   const visibleColumns = table.getAllColumns().filter((col: any) => col.getIsVisible()).map((col: any) => col.id);
   const exportData = table.getRowModel().rows.map((row: any) => row.original);
   const columns = table.getAllColumns().filter((column: any) => column.getCanHide());
+
+  const handleExcelExport = async () => {
+    setIsExportingExcel(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await exportToExcel(exportData, table.getAllColumns(), visibleColumns, `${exportFileName}.xlsx`);
+    } catch (error) {
+      console.error('Excel export failed:', error);
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
 
   return (
     <Navbar bg="light" className={`mb-3 rounded shadow-sm ${className}`}>
@@ -88,7 +81,7 @@ export const Toolbar = <T extends TableData>({
             </InputGroup>
             <Dropdown>
               <Dropdown.Toggle variant="outline-primary" size="sm">
-                <FaColumns className='mb-1' /> Columns
+                <FaColumns className="mb-1" /> Columns
               </Dropdown.Toggle>
               <Dropdown.Menu className="p-2" style={{ zIndex: 1050 }}>
                 {renderColumnToggle ? (
@@ -97,7 +90,7 @@ export const Toolbar = <T extends TableData>({
                   columns.map((column: any) => (
                     <Form.Check
                       key={column.id}
-                      className="mb-2 "
+                      className="mb-2"
                       label={column.columnDef.header as string}
                       checked={column.getIsVisible()}
                       onChange={(e) => column.toggleVisibility(e.target.checked)}
@@ -107,8 +100,20 @@ export const Toolbar = <T extends TableData>({
               </Dropdown.Menu>
             </Dropdown>
             <Dropdown>
-              <Dropdown.Toggle variant="outline-primary" size="sm">
-                <FaFileExport className='mb-1' /> Export
+              <Dropdown.Toggle
+                variant="outline-primary"
+                size="sm"
+                disabled={isExportingExcel}
+              >
+                <FaFileExport className="mb-1" /> Export
+                {isExportingExcel && (
+                  <Spinner
+                    animation="border"
+                    size="sm"
+                    variant="primary"
+                    className="ms-2"
+                  />
+                )}
               </Dropdown.Toggle>
               <Dropdown.Menu style={{ zIndex: 1050 }}>
                 {exportOptions.csv && (
@@ -117,9 +122,7 @@ export const Toolbar = <T extends TableData>({
                   </Dropdown.Item>
                 )}
                 {exportOptions.excel && (
-                  <Dropdown.Item
-                    onClick={() => exportToExcel(exportData, table.getAllColumns(), visibleColumns, `${exportFileName}.xlsx`)}
-                  >
+                  <Dropdown.Item onClick={handleExcelExport} disabled={isExportingExcel}>
                     Excel
                   </Dropdown.Item>
                 )}
@@ -137,7 +140,8 @@ export const Toolbar = <T extends TableData>({
                 onClick={fetchTableData}
                 disabled={isLoading}
               >
-                <FaSync className={`${isLoading ? 'spin' : ''} mb-1`} /> Refresh
+                <FaSync className={`mb-1 me-1 ${isLoading ? 'spin' : ''}`} />
+                Refresh
               </Button>
             )}
             {customButtons.map((button, index) => (
@@ -145,7 +149,7 @@ export const Toolbar = <T extends TableData>({
             ))}
           </Col>
           <Col md={4} className="d-flex justify-content-end gap-2">
-            {selectedRows > 0 && rowSelection?.bulkAction && (
+            {selectedRows > 1 && rowSelection?.bulkAction && (  // Changed from selectedRows > 0 to selectedRows > 1
               <div className="selected-actions d-flex align-items-center me-3">
                 <span className="badge bg-primary me-2">{selectedRows} selected</span>
                 <Button

@@ -2,12 +2,7 @@ import React from 'react';
 import { useTable } from '../context/TableContext';
 import '../styles/DataTable.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-interface TableFiltersProps {
-  className?: string;
-  renderFilter?: (column: any) => React.ReactNode; // New: Custom filter rendering
-  filterTypes?: Record<string, 'text' | 'select' | ((column: any) => React.ReactNode)>; // New: Filter type customization
-}
+import { TableFiltersProps } from 'types';
 
 export const TableFilters = ({
   className = '',

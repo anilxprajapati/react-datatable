@@ -1,16 +1,7 @@
 import React, { useState } from 'react';
-import { TableData } from '../types';
+import { BulkEditModalProps, TableData } from '../types';
 import '../styles/DataTable.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-interface BulkEditModalProps<T extends TableData> {
-  show: boolean;
-  onHide: () => void;
-  columns: any[];
-  selectedRows: T[];
-  onBulkEditSubmit: (selectedItems: T[]) => void;
-  renderBulkEditForm?: (selectedRows: T[], onSubmit: (values: Record<string, any>) => void) => React.ReactNode; // New: Custom form rendering
-}
 
 export const BulkEditModal = <T extends TableData>({
   show,

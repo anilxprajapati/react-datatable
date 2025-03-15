@@ -1,19 +1,10 @@
 import React from 'react';
 import { flexRender } from '@tanstack/react-table';
 import { useTable } from '../context/TableContext';
-import { Action, TableData } from '../types';
+import { Action, TableData, TableHeaderProps } from '../types';
 import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import '../styles/DataTable.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-interface TableHeaderProps<T extends TableData> {
-  className?: string;
-  renderHeader?: (header: any) => React.ReactNode;
-  sortIcons?: { asc?: React.ReactNode; desc?: React.ReactNode; unsorted?: React.ReactNode };
-  rowSelection?: { enabled?: boolean; bulkAction?: { label: string; onClick: (selectedItems: T[]) => void } };
-  actions?: Action<T>[];
-  showActionColumn: boolean;
-}
 
 export const TableHeader = <T extends TableData>({
   className = '',

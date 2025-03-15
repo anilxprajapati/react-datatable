@@ -1,18 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { flexRender } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTable } from '../context/TableContext';
-import { Action, TableData } from '../types';
+import { Action, TableBodyProps, TableData } from '../types';
+import { Spinner } from 'react-bootstrap';
 import '../styles/DataTable.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-interface TableBodyProps<T extends TableData> {
-  className?: string;
-  onRowClick?: (row: T) => void;
-  renderCell?: (cell: any) => React.ReactNode;
-  renderActions?: (row: T, actions: Action<T>[]) => React.ReactNode;
-  formatRawData?: (row: T) => Record<string, any>;
-}
 
 export const TableBody = <T extends TableData>({
   className = '',
@@ -20,7 +13,8 @@ export const TableBody = <T extends TableData>({
   renderCell,
   renderActions,
   formatRawData,
-}: TableBodyProps<T>) => {
+  onRenderComplete,
+}: TableBodyProps<T> & { onRenderComplete?: () => void }) => {
   const { table } = useTable<T>();
   const { isLoading, config } = table.options.meta as { isLoading: boolean; config: any };
   const rowSelection = config.rowSelection;
@@ -49,21 +43,36 @@ export const TableBody = <T extends TableData>({
     (actions.length > 0 && Object.keys(table.getState().rowSelection).length === 1 ? 1 : 0) +
     (rowSelection?.enabled ? 1 : 0);
 
-  const defaultFormatRawData = (data: T) => ({
-    id: (data as any).id,
-    name: (data as any).name,
-    age: (data as any).age,
-    email: (data as any).email,
-  });
-
+  const defaultFormatRawData = (data: T) => data;
   const showActionColumn = Object.keys(table.getState().rowSelection).length === 1;
+
+  useEffect(() => {
+    if (virtualItems.length > 0 && onRenderComplete) {
+      onRenderComplete(); // Notify when virtual items are fully rendered
+    }
+  }, [virtualItems.length, onRenderComplete]);
 
   return (
     <tbody className={className}>
-      {isLoading ? (
+      {isLoading || virtualItems.length === 0 ? (
         <tr>
-          <td colSpan={colSpan} className="text-center py-4">
-            <span>Loading...</span>
+          <td colSpan={colSpan} className="position-relative" style={{ height: '200px' }}>
+            <div
+              className="loading-overlay"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Spinner animation="border" variant="primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+            </div>
           </td>
         </tr>
       ) : table.getRowModel().rows.length === 0 ? (
@@ -141,7 +150,7 @@ export const TableBody = <T extends TableData>({
                                       : action.label === 'Save'
                                       ? 'outline-success'
                                       : 'outline-primary'
-                                  } btn-sm p-2`}
+                                  } btn-sm px-2 py-1`}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     action.onClick(row.original);

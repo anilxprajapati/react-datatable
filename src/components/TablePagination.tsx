@@ -1,18 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Row, Col, Form, Pagination as BootstrapPagination } from 'react-bootstrap';
 import { useTable } from '../context/TableContext';
 import '../styles/DataTable.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-interface TablePaginationProps {
-  className?: string;
-  pageSizeOptions?: number[];
-  renderPagination?: (table: any) => React.ReactNode;
-}
+import { TablePaginationProps } from 'types';
 
 export const TablePagination = ({
   className = '',
-  pageSizeOptions = [10, 25, 50, 100],
   renderPagination,
 }: TablePaginationProps) => {
   const { table } = useTable();
@@ -20,7 +14,26 @@ export const TablePagination = ({
   const pageCount = table.getPageCount();
   const canPreviousPage = table.getCanPreviousPage();
   const canNextPage = table.getCanNextPage();
-  const totalRows = table.options.rowCount ?? 0; // Default to 0 if undefined
+  const totalRows = table.options.rowCount ?? 0; // Total rows from config or state
+
+  // Dynamic page size options: 10, 25, 50, 75, and 100% of totalRows
+  const pageSizeOptions = useMemo(() => {
+    if (totalRows <= 50) return [10, 25, 50]; // Small dataset ke liye fixed options
+  
+    const dynamicSizes = [
+      Math.round(totalRows * 0.25), // 25%
+      Math.round(totalRows * 0.5),  // 50%
+      Math.round(totalRows * 0.75), // 75%
+      totalRows,                    // 100%
+    ];
+  
+    const options = [pageSize, ...dynamicSizes].filter((size, index, self) => 
+      size <= totalRows && !self.includes(size, index + 1)
+    );
+  
+    return options.sort((a, b) => a - b);
+  }, [totalRows]);
+  
 
   if (renderPagination) {
     return <div className={`pagination mt-3 ${className}`}>{renderPagination(table)}</div>;
@@ -33,11 +46,13 @@ export const TablePagination = ({
         <Form.Select
           value={pageSize}
           onChange={(e) => table.setPageSize(Number(e.target.value))}
-          style={{ width: '80px' }}
+          style={{ width: 'fit-content' }} // Slightly wider to accommodate larger numbers
           className="me-2"
         >
           {pageSizeOptions.map((size) => (
-            <option key={size} value={size}>{size}</option>
+            <option key={size} value={size}>
+              {size === totalRows ? `${size} (All)` : size}
+            </option>
           ))}
         </Form.Select>
       </Col>

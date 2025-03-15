@@ -78,3 +78,61 @@ export interface DataTableProps<T extends TableData> {
   renderPagination?: (table: any) => React.ReactNode;
   renderBulkEditForm?: (selectedRows: T[], onSubmit: (values: Record<string, any>) => void) => React.ReactNode;
 }
+
+export interface TablePaginationProps {
+  className?: string;
+  renderPagination?: (table: any) => React.ReactNode;
+  pageSizeOptions?: number[]; // ✅ Add this line
+}
+
+export interface BulkEditModalProps<T extends TableData> {
+  show: boolean;
+  onHide: () => void;
+  columns: any[];
+  selectedRows: T[];
+  onBulkEditSubmit: (selectedItems: T[]) => void;
+  renderBulkEditForm?: (selectedRows: T[], onSubmit: (values: Record<string, any>) => void) => React.ReactNode; // New: Custom form rendering
+}
+
+export interface TableBodyProps<T extends TableData> {
+  className?: string;
+  onRowClick?: (row: T) => void;
+  renderCell?: (cell: any) => React.ReactNode;
+  renderActions?: (row: T, actions: Action<T>[]) => React.ReactNode;
+  formatRawData?: (row: T) => Record<string, any>;
+  onRenderComplete?: () => void;
+}
+
+export interface TableFiltersProps {
+  className?: string;
+  renderFilter?: (column: any) => React.ReactNode; // New: Custom filter rendering
+  filterTypes?: Record<string, 'text' | 'select' | ((column: any) => React.ReactNode)>; // New: Filter type customization
+}
+
+export interface TableHeaderProps<T extends TableData> {
+  className?: string;
+  renderHeader?: (header: any) => React.ReactNode;
+  sortIcons?: { asc?: React.ReactNode; desc?: React.ReactNode; unsorted?: React.ReactNode };
+  rowSelection?: { enabled?: boolean; bulkAction?: { label: string; onClick: (selectedItems: T[]) => void } };
+  actions?: Action<T>[];
+  showActionColumn: boolean;
+}
+
+export interface ToolbarProps<T extends TableData> {
+  globalFilter: string;
+  setGlobalFilter: (value: string) => void;
+  showFilters: boolean;
+  setShowFilters: (value: boolean) => void;
+  isLoading: boolean;
+  fetchTableData?: () => void;
+  className?: string;
+  onBulkEditClick: (selectedItems: T[]) => void;
+  customButtons?: React.ReactNode[];
+  exportOptions?: { csv?: boolean; excel?: boolean; clipboard?: boolean };
+  renderColumnToggle?: (columns: any[]) => React.ReactNode;
+  rowSelection?: {
+    enabled?: boolean;
+    bulkAction?: { label: string; onClick: (selectedItems: T[]) => void };
+  };
+  exportFileName?: string; // New: Pass export file name
+}

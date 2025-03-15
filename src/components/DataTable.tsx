@@ -21,7 +21,6 @@ import { TableBody } from './TableBody';
 import { TablePagination } from './TablePagination';
 import { BulkEditModal } from './BulkEditModal';
 import { TableProvider } from '../context/TableContext';
-import { getFilteredRowModel } from '@tanstack/react-table';
 import '../styles/DataTable.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
@@ -51,7 +50,7 @@ export const DataTable = <T extends TableData>({
     actions = [],
     styleConfig = { padding: 'standard', theme: 'light' },
     enableRawData = false,
-    exportFileName = 'exported_data', // Default file name if not provided
+    exportFileName = 'exported_data',
   } = config;
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -59,7 +58,8 @@ export const DataTable = <T extends TableData>({
   const [showFilters, setShowFilters] = useState(false);
   const [data, setData] = useState<T[]>(initialData);
   const [totalRows, setTotalRows] = useState<number>(pagination.initialState?.totalRows ?? initialData.length);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isRendering, setIsRendering] = useState(false);
   const [paginationState, setPaginationState] = useState<PaginationState>({
     pageIndex: pagination.initialState?.pageIndex ?? 0,
     pageSize: pagination.initialState?.pageSize ?? 10,
@@ -74,10 +74,13 @@ export const DataTable = <T extends TableData>({
   const [selectedRowsForModal, setSelectedRowsForModal] = useState<T[]>([]);
 
   const isServerSide = pagination.mode === 'server';
+  const isLoading = isFetching || isRendering;
 
   const fetchTableData = async () => {
     if (!fetchData || !isServerSide) return;
-    setIsLoading(true);
+    setIsFetching(true);
+    setIsRendering(true);
+    setData([]); // Clear data immediately on refresh
     try {
       const params = {
         pageIndex: paginationState.pageIndex,
@@ -94,7 +97,7 @@ export const DataTable = <T extends TableData>({
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
     }
   };
 
@@ -151,8 +154,18 @@ export const DataTable = <T extends TableData>({
     setShowBulkEditModal(true);
   };
 
+  const handleRenderingComplete = () => {
+    if (!isFetching) {
+      setIsRendering(false); // Only stop rendering state when fetching is also done
+    }
+  };
+
   if (!table.getHeaderGroups().length && isLoading) {
-    return <div>Loading table...</div>;
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '200px' }}>
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -174,7 +187,7 @@ export const DataTable = <T extends TableData>({
             exportOptions={{ csv: true, excel: true, clipboard: true }}
             renderColumnToggle={undefined}
             rowSelection={rowSelection}
-            exportFileName={exportFileName} // Pass exportFileName to Toolbar
+            exportFileName={exportFileName}
           />
         )}
         {showFilters && (
@@ -184,13 +197,17 @@ export const DataTable = <T extends TableData>({
             filterTypes={filterTypes}
           />
         )}
-        <div ref={tableContainerRef} className="table-container" style={{ height: '485px', overflowY: 'auto', overflowX: 'auto' }}>
-        <table 
+        <div
+          ref={tableContainerRef}
+          className="table-container" // Removed loading-dimmed class
+          style={{ height: '485px', overflowY: 'auto', overflowX: 'auto', position: 'relative' }}
+        >
+          <table
             className={`data-table table table-striped table-hover table-${styleConfig.padding}`}
-            style={{ 
-              tableLayout: 'auto', // Allow columns to size naturally within constraints
-              width: 'max-content', // Prevent shrinking, allow scrolling
-              minWidth: '100%', // Ensure it fills container when fewer columns
+            style={{
+              tableLayout: 'auto',
+              width: 'max-content',
+              minWidth: '100%',
             }}
           >
             <TableHeader
@@ -213,6 +230,7 @@ export const DataTable = <T extends TableData>({
               renderCell={renderCell}
               renderActions={renderActions}
               formatRawData={formatRawData}
+              onRenderComplete={handleRenderingComplete}
             />
           </table>
         </div>
